@@ -67,7 +67,7 @@ AppInitCode App::Init()
 
     imgui_manager = std::make_unique<ImGuiWinManager>();
     main_camera = std::make_shared<Camera3D>();
-    main_camera->render_target = renderer->CreateRenderTarget();
+    main_camera->render_target = RenderTarget::CreateTarget(renderer.get(), game_width, game_height);
     cameras.push_back(main_camera.get());
     
     ResourceManager::Init();

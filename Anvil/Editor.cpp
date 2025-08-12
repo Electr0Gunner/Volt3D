@@ -1,12 +1,14 @@
 #include "Editor.hpp"
 #include "EditorGUI.hpp"
 
+#include <format>
+
 using namespace Anvil;
 
 
 Editor::Editor(/* args */)
 {
-    title_label = "Anvil Level Editor";
+    title_label = std::format("Anvil Level Editor (v{})", ANVIL_VERSION);
 }
     
 Editor::~Editor()

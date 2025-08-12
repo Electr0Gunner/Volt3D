@@ -154,8 +154,6 @@ void Renderer3D::Cleanup()
 
 void Renderer3D::BeginFrame()
 {
-
-    glEnable(GL_DEPTH_TEST);
     glClearColor(0.1f, 0.1f, 0.2f, 1.0f);
 
 
@@ -204,8 +202,12 @@ void Renderer3D::Flush()
         {
             camera->render_target.Bind();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            if (camera->view_mode == CameraViewMode::VIEW_ORTOGRAGHIC)
+                glDisable(GL_DEPTH_TEST);
+            else
+                glEnable(GL_DEPTH_TEST);
             glm::mat4 view = camera->GetViewMatrix();
-            glm::mat4 proj = camera->GetProjection((float)App::Instance()->window_width / (float)App::Instance()->window_height);
+            glm::mat4 proj = camera->GetProjection();
             shader->SetMat4("uModel", cmd.model);
             shader->SetMat4("uView", view);
             shader->SetMat4("uProjection", proj);
@@ -235,30 +237,6 @@ void Renderer3D::Flush()
     command_buffer.clear();
 }
 
-RenderTarget Renderer3D::CreateRenderTarget()
-{
-    RenderTarget target;
-    target.type = TargetType::TARGET_SCREEN;
-    target.viewport_rect = GetViewport(target, App::Instance()->game_width, App::Instance()->game_height); //target is placed there just for the argument, cause it wont actually do anything with it
-
-    glGenTextures(1, &target.color_texture);
-    glBindTexture(GL_TEXTURE_2D, target.color_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, target.viewport_rect.width, target.viewport_rect.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glGenFramebuffers(1, &target.FBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, target.FBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target.color_texture, 0);
-
-    glGenRenderbuffers(1, &target.depth_buffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, target.depth_buffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, target.viewport_rect.width, target.viewport_rect.height);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, target.depth_buffer);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    return target;
-}
 
 void Renderer3D::UpdateViewport(RenderTarget& target, int logical_width, int logical_height)
 {

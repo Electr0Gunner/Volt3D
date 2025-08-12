@@ -47,8 +47,9 @@ Matrix4 Camera3D::GetViewMatrix() const
     return glm::lookAt(position, position + FRONT, UP);
 }
 
-Matrix4 Camera3D::GetProjection(float aspect) const
+Matrix4 Camera3D::GetProjection() const
 {
+    float aspect = (float)render_target.viewport_rect.width / (float)render_target.viewport_rect.height;
     if (view_mode == CameraViewMode::VIEW_PERSPECTIVE)
     {
         return glm::perspective(glm::radians(fov), aspect, near_clip, far_clip);
@@ -69,7 +70,7 @@ Vector3 Camera3D::ScreenToWorldRay(const Vector2& screen_pos, float screen_width
     float y = 1.0f - (2.0f * screen_pos.y) / screen_height;
     glm::vec4 ray_clip(x, y, -1.0f, 1.0f);
 
-    Matrix4 proj = GetProjection(screen_width / screen_height);
+    Matrix4 proj = GetProjection();
     glm::vec4 ray_eye = glm::inverse(proj) * ray_clip;
     ray_eye = glm::vec4(ray_eye.x, ray_eye.y, -1.0f, 0.0f);
 

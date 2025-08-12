@@ -53,7 +53,6 @@ namespace Smith
         virtual void SendCommand(RenderCommand cmd);
         virtual Rect GetViewport(const RenderTarget& target, int logical_width, int logical_height);
         virtual void UpdateViewport(RenderTarget& target, int logical_width, int logical_height);
-        virtual RenderTarget CreateRenderTarget();
 
         virtual std::string GetErrorStr();
 

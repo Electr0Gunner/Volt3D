@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ImGui/ImGuiWindow.hpp>
+#include "MapWriter.hpp"
 #include <App.hpp>
 #include <Common.hpp>
 #include <Input.hpp>
@@ -25,8 +26,9 @@ namespace Anvil
     enum AnvilToolType
     {
         TOOL_SELECT,
-        TOOL_MAGNIFY,
         TOOL_CAMERA,
+        TOOL_ACTOR,
+        TOOL_BRUSH,
     };
 
     class EditorGUI : public Smith::ImGuiWindow
@@ -40,6 +42,7 @@ namespace Anvil
         virtual void Process();
         void SetupDockspace();
         void HandleBrushTool(Smith::Camera3D* camera);
+        void UpdateCameraViewport(Smith::Camera3D* camera);
         bool setup_dockspace;
         Smith::Camera3D* main_camera;
         std::shared_ptr<Smith::Camera3D> top_camera;
@@ -72,8 +75,10 @@ namespace Anvil
         side_camera = std::make_shared<Smith::Camera3D>();
         front_camera = std::make_shared<Smith::Camera3D>();
 
+        Smith::Renderer3D* renderer_ptr = Smith::App::Instance()->renderer.get();
+
         top_camera->view_mode = Smith::CameraViewMode::VIEW_ORTOGRAGHIC;
-        top_camera->render_target = Smith::App::Instance()->renderer->CreateRenderTarget();
+        top_camera->render_target = Smith::RenderTarget::CreateTarget(renderer_ptr, 1600, 900);
         top_camera->render_target.render_type = Smith::RenderType::RENDER_WIREFRAME;
         top_camera->position = Smith::Vector3(0.0f, 5.0f, 0.0f);
         top_camera->yaw = 90.0f;
@@ -81,7 +86,7 @@ namespace Anvil
         top_camera->UpdateVectors();
 
         side_camera->view_mode = Smith::CameraViewMode::VIEW_ORTOGRAGHIC;
-        side_camera->render_target = Smith::App::Instance()->renderer->CreateRenderTarget();
+        side_camera->render_target = Smith::RenderTarget::CreateTarget(renderer_ptr, 1600, 900);
         side_camera->render_target.render_type = Smith::RenderType::RENDER_WIREFRAME;
         side_camera->position = Smith::Vector3(5.0f, 0.0f, 0.0f);
         side_camera->yaw = 180.0f; 
@@ -89,7 +94,7 @@ namespace Anvil
         side_camera->UpdateVectors();
 
         front_camera->view_mode = Smith::CameraViewMode::VIEW_ORTOGRAGHIC;
-        front_camera->render_target = Smith::App::Instance()->renderer->CreateRenderTarget();
+        front_camera->render_target = Smith::RenderTarget::CreateTarget(renderer_ptr, 1600, 900);
         front_camera->render_target.render_type = Smith::RenderType::RENDER_WIREFRAME;
         front_camera->position = Smith::Vector3(0.0f, 5.0f, 0.0f);
         front_camera->pitch = -90.0f; 
@@ -111,6 +116,21 @@ namespace Anvil
     
     EditorGUI::~EditorGUI()
     {
+    }
+
+    void EditorGUI::UpdateCameraViewport(Smith::Camera3D* camera)
+    {
+        ImVec2 content_size = ImGui::GetContentRegionAvail();
+        ImVec2 window_pos = ImGui::GetWindowPos();
+        ImVec2 content_min = ImGui::GetWindowContentRegionMin();
+        ImVec2 viewportPos(window_pos.x + content_min.x,
+                        window_pos.y + content_min.y);
+
+        Smith::Rect newRect = Smith::Rect(0, 0, content_size.x, content_size.y);
+
+        if (newRect != camera->render_target.viewport_rect)
+            camera->render_target.ResizeTarget(newRect);
+
     }
     
     void EditorGUI::SetupDockspace()
@@ -148,7 +168,7 @@ namespace Anvil
     void EditorGUI::Process()
     {
 
-        static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
+        static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_NoCloseButton;
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
@@ -189,8 +209,8 @@ namespace Anvil
         ImGui::End();
 
         ImGui::Begin("3D View");
+        UpdateCameraViewport(Smith::App::Instance()->main_camera.get());
         ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(Smith::App::Instance()->main_camera->render_target.color_texture)), ImGui::GetContentRegionAvail());
-
         cam_move_speed = Smith::Input::KeyPressed(Smith::Key::Shift) ? 10.0f : 4.0f;
         if (current_tool == AnvilToolType::TOOL_CAMERA)
         {   
@@ -274,8 +294,9 @@ namespace Anvil
         ImGui::End();
 
         ImGui::Begin("Top View");
+        UpdateCameraViewport(top_camera.get());
         ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(top_camera->render_target.color_texture)), ImGui::GetContentRegionAvail());
-        if (current_tool == AnvilToolType::TOOL_MAGNIFY)
+        if (current_tool == AnvilToolType::TOOL_CAMERA)
         {
             if (current_2D_moving_window == ViewWindow::VIEW_NONE && ImGui::IsWindowHovered())
             {
@@ -339,8 +360,9 @@ namespace Anvil
         ImGui::End();
 
         ImGui::Begin("Side View");
+        UpdateCameraViewport(side_camera.get());
         ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(side_camera->render_target.color_texture)), ImGui::GetContentRegionAvail());
-        if (current_tool == AnvilToolType::TOOL_MAGNIFY)
+        if (current_tool == AnvilToolType::TOOL_CAMERA)
         {
             if (current_2D_moving_window == ViewWindow::VIEW_NONE && ImGui::IsWindowHovered())
             {
@@ -405,8 +427,9 @@ namespace Anvil
         ImGui::End();
 
         ImGui::Begin("Front View");
+        UpdateCameraViewport(front_camera.get());
         ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(front_camera->render_target.color_texture)), ImGui::GetContentRegionAvail());
-        if (current_tool == AnvilToolType::TOOL_MAGNIFY)
+        if (current_tool == AnvilToolType::TOOL_CAMERA)
         {
             if (current_2D_moving_window == ViewWindow::VIEW_NONE && ImGui::IsWindowHovered())
             {
@@ -481,43 +504,39 @@ namespace Anvil
             ImGui::EndTooltip();
         }
 
-        if (ImGui::Selectable("Magnify", current_tool == AnvilToolType::TOOL_MAGNIFY)) 
-        {
-            current_tool = AnvilToolType::TOOL_MAGNIFY;
-        }
-        if (ImGui::BeginItemTooltip()) {
-            ImGui::Text("Zoom in and out in the 2D views");
-            ImGui::EndTooltip();
-        }
-
         if (ImGui::Selectable("Camera", current_tool == AnvilToolType::TOOL_CAMERA)) 
         {
             current_tool = AnvilToolType::TOOL_CAMERA;
         }
         if (ImGui::BeginItemTooltip()) {
-            ImGui::Text("Use the camera in 3D view");
+            ImGui::Text("Use the camera in the viewports");
             ImGui::EndTooltip();
         }
 
-        if (ImGui::Selectable("Actor")) 
+        if (ImGui::Selectable("Actor", current_tool == AnvilToolType::TOOL_ACTOR)) 
         {
-
+            current_tool = AnvilToolType::TOOL_ACTOR;
         }
         if (ImGui::BeginItemTooltip()) {
             ImGui::Text("Place an actor");
             ImGui::EndTooltip();
         }
 
-        if (ImGui::Selectable("Brush")) 
+        if (ImGui::Selectable("Brush", current_tool == AnvilToolType::TOOL_BRUSH)) 
         {
-
+            current_tool = AnvilToolType::TOOL_BRUSH;
         }
         if (ImGui::BeginItemTooltip()) {
-            ImGui::Text("Place a brush");
+            ImGui::Text("Create a brush");
             ImGui::EndTooltip();
         }
 
         ImGui::End();
+
+        if (ImGui::Button("test write"))
+        {
+            MapWriter::WriteMap();
+        }
     }
 
     
