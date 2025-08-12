@@ -1,1 +1,4 @@
 build/
+examples/bin/*.ini
+examples/bin/*.exe
+examples/bin/*.pdb
